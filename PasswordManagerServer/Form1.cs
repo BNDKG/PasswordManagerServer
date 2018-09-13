@@ -16,10 +16,11 @@ using System.IO;
 using System.Security.Cryptography;
 //序列化
 using System.Runtime.Serialization.Formatters.Binary;
-
 using System.Runtime.Serialization;
 
+//和android设备的序列化json
 
+using System.Web.Script.Serialization;
 
 namespace PasswordManagerServer
 {
@@ -32,6 +33,12 @@ namespace PasswordManagerServer
         //总体密码保存结构体
         //static PassWordStruct[] bbb;
         static PassWordDic bbbb;
+
+        enum ClientType
+        {
+            Csharp,
+            Android,
+        }
 
 
         public Form1()
@@ -68,8 +75,12 @@ namespace PasswordManagerServer
             try
             {
                 // Set the TcpListener on port 13000.
-                Int32 port = 13000;
-                IPAddress localAddr = IPAddress.Parse("192.168.3.9");
+
+                Int32 port = Convert.ToInt32(textBox1.Text);
+                string ipadd = textBox2.Text;
+
+
+                IPAddress localAddr = IPAddress.Parse(ipadd);
 
                 // TcpListener server = new TcpListener(port);
                 server = new TcpListener(localAddr, port);
@@ -77,8 +88,7 @@ namespace PasswordManagerServer
                 // Start listening for client requests.
                 server.Start();
 
-                // Buffer for reading data
-                Byte[] bytes = new Byte[256];
+
                 //String data = null;
 
 
@@ -115,34 +125,71 @@ namespace PasswordManagerServer
 
                             // Get a stream object for reading and writing
                             NetworkStream stream = client.GetStream();
-
-                            int i;
+                            
+                            //int i;
 
                             // Loop to receive all the data sent by the client.
-                            while ((i = stream.Read(bytes, 0, bytes.Length)) != 0)
+                            //while ((i = stream.Read(bytes, 0, bytes.Length)) != 0) { }
+
+                            // Buffer for reading data
+                            Byte[] bytes = new Byte[11];
+
+                            stream.Read(bytes, 0, bytes.Length);
+
+                            // 将传来字符串转换为字符串数组,todo添加长度限制防止崩溃
+                            //data = System.Text.Encoding.ASCII.GetString(bytes, 0, i);
+
+                            //string[] firstget=(string[])EncryptionClass.BytesToObject(bytes);
+                            //
+                            string[] firstget = EncryptionClass.BytesToStringArr(bytes);
+
+                            ClientType ddd;
+                            if (GetClientType(firstget) == 1)
                             {
-                                // 将传来字符串转换为字符串数组,todo添加长度限制防止崩溃
-                                //data = System.Text.Encoding.ASCII.GetString(bytes, 0, i);
-                                string[] firstget=(string[])EncryptionClass.BytesToObject(bytes);
-
-                                //处理请求并回复
-                                byte[][] backmsgs = backmsglogic(firstget);
-
-                                foreach (var singlemsg in backmsgs)
-                                {
-                                    int len = singlemsg.Length;
-
-                                    stream.Write(singlemsg, 0, len);
-
-                                    //这里考虑下要不要wait
-                                }
-
-                                //stream.Write(msg2, 0, msg2.Length);
-
-                                //string kkk = data;
-
-                                //Console.WriteLine("Sent: {0}", databack);
+                                ddd = ClientType.Csharp;
                             }
+                            else if(GetClientType(firstget) == 2)
+                            {
+                                ddd = ClientType.Android;
+                            }
+                            else
+                            {
+                                ddd = ClientType.Csharp;
+                            }
+
+                            //判断安卓还是c#客户端
+
+                            switch (ddd)
+                            {
+                                case ClientType.Csharp:
+
+                                    Byte[] bytes2 = new Byte[256];
+
+                                    stream.Read(bytes2, 0, bytes2.Length);
+
+                                    string[] csharplogicget = (string[])EncryptionClass.BytesToObject(bytes2);
+
+                                    //处理请求并回复
+                                    byte[][] backmsgs = backmsglogic(csharplogicget);
+
+                                    foreach (var singlemsg in backmsgs)
+                                    {
+                                        int len = singlemsg.Length;
+
+                                        stream.Write(singlemsg, 0, len);
+
+                                        //这里考虑下要不要wait
+                                    }
+
+
+                                    break;
+                                case ClientType.Android:
+                                    break;
+                                default:
+                                    break;
+                            }
+
+
                             // Shutdown and end connection
                             client.Close();
                         }
@@ -179,6 +226,24 @@ namespace PasswordManagerServer
             backmsglogic(test);
 
         }
+        private int GetClientType(string[] firstget)
+        {
+            int typechoice;
+            string logictype = firstget[0];
+            try
+            {
+                typechoice = Convert.ToInt32(logictype);
+            }
+            catch
+            {
+                typechoice = 0;
+                //有空了再搞异常处理防止恶意破坏
+            }
+
+            return typechoice;
+
+        }
+
 
         private byte[][] backmsglogic(string[] firstget)
         {
@@ -321,6 +386,7 @@ namespace PasswordManagerServer
                         }
                         if(userinfo[0] == "上传成功")
                         {
+                            
                             //更新服务器中的bak和source
                         }
                         /*
@@ -565,6 +631,26 @@ namespace PasswordManagerServer
         {
             test111();
         }
+
+        private void button16_Click(object sender, EventArgs e)
+        {
+            //string[] kkk = { "fuck the superuniverse", "fuck again", "fuck again and again" };
+
+            //List<string> kkk = new List<string> { "fuck the superuniverse", "fuck again", "fuck again and again" };
+            string[] kkk = { "aa", "abc", "ks" };
+
+            string get =EncryptionClass.ToJSON(kkk);
+
+            //string sss = "easonjim";
+
+            byte [] changebyte =Encoding.UTF8.GetBytes(get);
+
+            string nfefe=Encoding.UTF8.GetString(changebyte);
+
+            string[] lll =(string[])EncryptionClass.FromJSON<string[]>(nfefe);
+
+            int lemecc = 1;
+        }
     }
     [Serializable]
     public struct PassWordStruct 
@@ -688,6 +774,43 @@ namespace PasswordManagerServer
                 IFormatter formatter = new BinaryFormatter(); return formatter.Deserialize(ms);
             }
         }
+        public static string[] BytesToStringArr(byte[] Bytes)
+        {
+            string nfefe = Encoding.UTF8.GetString(Bytes);
+            return FromJSON<string[]>(nfefe);
+        }
+        public static byte[] StringArrToBytes(string[] StringArr)
+        {
+            string get = EncryptionClass.ToJSON(StringArr);
+            return Encoding.UTF8.GetBytes(get);
+        }
+
+        /// <summary>
+        /// 内存对象转换为json字符串
+        /// </summary>
+        /// <param name="obj"></param>
+        /// <returns></returns>
+        public static string ToJSON(object obj)
+        {
+            StringBuilder sb = new StringBuilder();
+            JavaScriptSerializer json = new JavaScriptSerializer();
+            json.Serialize(obj, sb);
+            return sb.ToString();
+        }
+
+        /// <summary>
+        /// Json字符串转内存对象
+        /// </summary>
+        /// <param name="jsonString"></param>
+        /// <param name="obj"></param>
+        /// <returns></returns>
+        public static T FromJSON<T>(string jsonString)
+        {
+            JavaScriptSerializer json = new JavaScriptSerializer();
+            return json.Deserialize<T>(jsonString);
+        }
+
+
     }
 
 }
