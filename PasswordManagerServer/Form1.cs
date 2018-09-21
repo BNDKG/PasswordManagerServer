@@ -132,7 +132,7 @@ namespace PasswordManagerServer
                             //while ((i = stream.Read(bytes, 0, bytes.Length)) != 0) { }
 
                             // Buffer for reading data
-                            Byte[] bytes = new Byte[11];
+                            Byte[] bytes = new Byte[14];
 
                             stream.Read(bytes, 0, bytes.Length);
 
@@ -156,6 +156,8 @@ namespace PasswordManagerServer
                             {
                                 ddd = ClientType.Csharp;
                             }
+
+                            int MsgLen = Convert.ToInt32(firstget[1]);
 
                             //判断安卓还是c#客户端
 
@@ -184,6 +186,24 @@ namespace PasswordManagerServer
 
                                     break;
                                 case ClientType.Android:
+
+                                    Byte[] bytes3 = new Byte[MsgLen];
+                                    stream.Read(bytes3, 0, bytes3.Length);
+
+                                    string[] get2 = EncryptionClass.BytesToStringArr(bytes3);
+
+                                    byte[][] backmsgs2 = backmsglogic2(get2);
+
+                                    foreach (var singlemsg in backmsgs2)
+                                    {
+                                        int len = singlemsg.Length;
+
+                                        stream.Write(singlemsg, 0, len);
+
+                                        //这里考虑下要不要wait
+                                    }
+
+
                                     break;
                                 default:
                                     break;
@@ -396,6 +416,212 @@ namespace PasswordManagerServer
                         }
                         */
                         
+
+                        byte[] msga = EncryptionClass.ObjectToBytes(userinfo);
+
+
+                        backmsgs[0] = msga;
+
+
+                    }
+                    else    //密码账号错误
+                    {
+                        //账号密码错误返回逻辑
+                    }
+                }
+                catch
+                {
+                    //如果出问题了
+                    int dddses = 3;
+                }
+            }
+
+            //先测试一下
+            /*
+            foreach (var singlemsg in backmsgs)
+            {
+                string[] gggg= (string[])EncryptionClass.BytesToObject(singlemsg);
+
+                int ddddss = 3;
+                //这里考虑下要不要wait
+            }
+            */
+
+
+            //Console.WriteLine("Received: {0}", data);
+
+            // Process the data sent by the client.
+            //data = data.ToUpper();
+
+            //string[] databack = { "Fuck back the superuniverse", "sdd" };
+
+
+
+
+
+
+
+            //byte[] msg = System.Text.Encoding.ASCII.GetBytes(databack);
+            //byte[] msg = EncryptionClass.ObjectToBytes(databack);
+            //string databack2 = "Fuck Fuck back the superuniverse";
+            //byte[] msg2 = System.Text.Encoding.ASCII.GetBytes(databack2);
+
+            return backmsgs;
+        }
+        private byte[][] backmsglogic2(string[] firstget)
+        {
+
+            byte[][] backmsgs = new byte[1][];
+
+            backmsgs[0] = new byte[] { 0x00 };
+
+
+            string logictype = firstget[0];
+            int typechoice;
+            try
+            {
+                typechoice = Convert.ToInt32(logictype);
+            }
+            catch
+            {
+                typechoice = 0;
+                //有空了再搞异常处理防止恶意破坏
+            }
+
+            if (typechoice == 1)
+            {
+                //同步逻辑
+
+                //读取用户名
+                string nameupload = firstget[1];
+                string pswload = firstget[2];
+
+                try
+                {
+                    //判断用户名密码是否正确
+                    if (userjudge(nameupload, pswload))   //密码账号正确
+                    {
+                        //从文件夹中读取对应数据
+                        CurUserinit(nameupload);
+                        //string bakpath = CurUserPath + "bak\\";
+                        string sourcepath = CurUserPath + "source\\psw";
+
+                        PassWordDic curbbbb = (PassWordDic)EncryptionClass.LoadPassword(sourcepath);
+
+                        //结构转换分布发送
+                        backmsgs = new byte[4][];
+                        int row = backmsgs.Length;
+
+                        //string[] databackname = { "Fuck back the superuniverse", "sdd" };
+                        string[] databackname = new string[curbbbb.numberofpassword];
+                        string[] databackpsw = new string[curbbbb.numberofpassword];
+                        string[] databackinfo = new string[curbbbb.numberofpassword];
+
+                        for (int iii = 0; iii < curbbbb.numberofpassword; iii++)
+                        {
+                            databackname[iii] = curbbbb.MYpasswordList[iii].name;
+                            databackpsw[iii] = curbbbb.MYpasswordList[iii].password;
+                            databackinfo[iii] = curbbbb.MYpasswordList[iii].info;
+                        }
+
+                        /*
+                        foreach (var singlepsw in curbbbb.MYpasswords)
+                        {
+                            databackname
+                        }
+                        */
+                        
+                        byte[] msgb = EncryptionClass.StringArrToBytes(databackname);
+                        byte[] msgc = EncryptionClass.StringArrToBytes(databackpsw);
+                        byte[] msgd = EncryptionClass.StringArrToBytes(databackinfo);
+
+                        string blen = String.Format("{0:D4}", msgb.Length);
+                        string clen = String.Format("{0:D4}", msgc.Length);
+                        string dlen = String.Format("{0:D4}", msgd.Length);
+                        //string blen = (msgb.Length).ToString();
+                        //string clen = (msgc.Length).ToString();
+                        //string dlen = (msgd.Length).ToString();
+
+                        string[] userinfo = { "002", blen, clen, dlen };
+                        byte[] msga = EncryptionClass.StringArrToBytes(userinfo);
+
+                        backmsgs[0] = msga;
+                        backmsgs[1] = msgb;
+                        backmsgs[2] = msgc;
+                        backmsgs[3] = msgd;
+                        /*
+                        for (int ii = 0; ii < row; ii++)
+                        {
+                            backmsgs[ii] = new byte[];
+                        }
+                        */
+
+                    }
+                    else    //密码账号错误
+                    {
+                        //账号密码错误返回逻辑
+                    }
+                }
+                catch
+                {
+                    //如果出问题了
+                    int dddses = 3;
+                }
+
+            }
+            else if (typechoice == 2)
+            {
+                //单个上传
+                //读取用户名
+                string nameupload = firstget[1];
+                string pswload = firstget[2];
+
+                try
+                {
+                    //判断用户名密码是否正确
+                    if (userjudge(nameupload, pswload))   //密码账号正确
+                    {
+                        //上传的文件名3 用户名4 密码5
+                        string uploadstructfilename = firstget[3];
+                        string uploadstructusername = firstget[4];
+                        string uploadstructpsw = firstget[5];
+
+                        //从文件夹中读取对应数据
+                        CurUserinit(nameupload);
+                        //string bakpath = CurUserPath + "bak\\";
+                        string sourcepath = CurUserPath + "source\\psw";
+
+                        PassWordDic curbbbb = (PassWordDic)EncryptionClass.LoadPassword(sourcepath);
+
+                        //结构转换分布发送
+                        backmsgs = new byte[1][];
+
+                        string[] userinfo = { "上传成功", "当前存储的信息等" };
+
+
+                        for (int iii = 0; iii < curbbbb.numberofpassword; iii++)
+                        {
+                            if (curbbbb.otherinfo == uploadstructfilename)
+                            {
+                                userinfo[0] = "重复的密码";
+                                break;
+                            }
+                            //databackname[iii] = curbbbb.MYpasswords[iii].name;
+                            //databackpsw[iii] = curbbbb.MYpasswords[iii].password;
+
+                        }
+                        if (userinfo[0] == "上传成功")
+                        {
+
+                            //更新服务器中的bak和source
+                        }
+                        /*
+                        foreach (var singlepsw in curbbbb.MYpasswords)
+                        {
+                            databackname
+                        }
+                        */
+
 
                         byte[] msga = EncryptionClass.ObjectToBytes(userinfo);
 
