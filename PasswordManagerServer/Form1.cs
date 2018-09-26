@@ -71,97 +71,184 @@ namespace PasswordManagerServer
         bool Endflag;
         private void StartListerning()
         {
+            /*
+             * 通信协议(收)
+             * 第一次 2位 <json>固定长度 14 byte
+             * 0客户端标识 3位数字 \ 1第二次通信长度
+             * 第二次 4位
+             * 0逻辑代号 确认用户需要哪项功能 具体功能如下 
+             * 0 测试连通性 1 同步所有密码 2 上传本地密码 3 创建用户 4 修改key或删除用户密码等\
+             * 1用户名 \ 2用户的KEY \3待定
+             * 第三次(见后详细)
+             * 
+             */
+
+            /*
+             * 通信协议(用户上传本地密码)
+             * 第一次 4位 固定长度 256 byte
+             * 0待定 \ 1接下来一号数组长度 \ 2二号数组长度 \ 3三号数组长度
+             * 第二次
+             * 一号数组(name)
+             * 第三次
+             * 二号数组(psw)aes加密后
+             * 第四次
+             * 三号数组(info)其他信息，目前为保存名称
+             */
+            /* 通信协议(出现重复覆盖)
+             * 通信协议(发)
+             * 第一次 固定长度
+             * 0 是否成功以及是否有覆盖 \ 1 接下来信息的长度
+             * 第二次 所有将要覆盖的名字
+             * 名字数组
+             
+
+             * 通信协议(收)
+             * 第一次 固定长度
+             * 0 是否全部覆盖或取消或自定义 \ 1 接下来信息的长度
+             * 第二次 自定义覆盖
+             * 是否覆盖的数组
+             */
+
+
+            /*
+             * 通信协议(创建用户)
+             * 第一次 2位 固定长度 256 byte
+             * 0待定 \ 1接下来数组长度
+             * 第二次
+             * 0用户名 \1 KEY
+             */
+
+
+
+            /*
+             * 通信协议(修改或删除用户)
+             * 第一次 2位 固定长度 256 byte
+             * 0逻辑代号 具体功能如下
+             * 0待定 1删除某个密码 2修改KEY\
+             * 1接下来数组长度
+             * 第二次 (待定)
+             * 0待定 \1 待定
+             * 第二次(删除某个密码 不删除bak)
+             * 0密码存储名
+             * 第二次(修改key)
+             * 0 原来的key 1 新的key
+             */
+
+            /*----------------------------------------------------------------------------------------*/
+
+
+            /*
+             * 通信协议(发客户端同步下载详细)c#
+             * 第一次 4位 固定长度 256 byte
+             * 0是否允许同步下载 \ 1接下来一号数组长度 \ 2二号数组长度 \ 3三号数组长度
+             * 第二次
+             * 一号数组(name)
+             * 第三次
+             * 二号数组(psw)aes加密后
+             * 第四次
+             * 三号数组(info)其他信息，目前为保存名称
+             */
+
+            /*
+             * 通信协议(发客户端同步下载详细)android
+             * 第一次 4位 <json>固定长度 28 byte （这里可能不够提升到6位）
+             * 0是否允许同步下载 \ 1接下来一号数组长度 4位 \ 2二号数组长度 4位\ 3三号数组长度 4位
+             * 第二次
+             * 一号数组(name)
+             * 第三次
+             * 二号数组(psw)aes加密后
+             * 第四次
+             * 三号数组(info)其他信息，目前为保存名称
+             */
+
+            /*
+             * 通信协议(发客户端允许上传详细)c#
+             * 第一次 2位 固定长度 xx byte （）
+             * 0是否允许上传 \ 1剩余可用密码个数 4位 
+             */
+
+            /*
+             * 通信协议(发允许新建用户)c#
+             * 第一次 2位 固定长度 xx byte （）
+             * 0是否允许新增用户 \ 1待定 
+             */
+
+            /*
+             * 通信协议(发允许用户修改)c#
+             * 第一次 2位 固定长度 xx byte （）
+             * 0是否允许修改 \ 1待定 
+             */
+
+            /*
+             * 通信协议(发服务器资料修改成功)c#
+             * 第一次 2位 固定长度 xx byte （）
+             * 0修改是否成功 \ 1待定 
+             */
+
+
+            /*----------------------------------------------------------------------------------------*/
             TcpListener server = null;
             try
             {
-                // Set the TcpListener on port 13000.
-
                 Int32 port = Convert.ToInt32(textBox1.Text);
                 string ipadd = textBox2.Text;
 
-
                 IPAddress localAddr = IPAddress.Parse(ipadd);
 
-                // TcpListener server = new TcpListener(port);
                 server = new TcpListener(localAddr, port);
-
-                // Start listening for client requests.
                 server.Start();
-
-
-                //String data = null;
-
 
                 //设置退出flag
                 Endflag = true;
 
-
-                // Enter the listening loop.
+                //开始监听主循环
                 while (Endflag)
                 {
-
                     try
                     {
                         if (!server.Pending())
                         {
-
                             //为了避免每次都被tcpListener.AcceptTcpClient()阻塞线程，添加了此判断，
-
-                            //no connection requests have arrived。
-
                             //当没有连接请求时，什么也不做，有了请求再执行到tcpListener.AcceptTcpClient()
-
+                            //这里可能可以加sleep来降低服务器负载
                         }
                         else
                         {
-                            //Console.Write("Waiting for a connection... ");
-                            // Perform a blocking call to accept requests.
-                            // You could also user server.AcceptSocket() here.
-                            TcpClient client = server.AcceptTcpClient();
 
+                            TcpClient client = server.AcceptTcpClient();
+                            //用于测试TESTZDELFLAG
                             Console.WriteLine("Connected!");
 
-                            //data = null;
-
                             // Get a stream object for reading and writing
-                            NetworkStream stream = client.GetStream();
-                            
-                            //int i;
+                            NetworkStream stream = client.GetStream();                         
 
-                            // Loop to receive all the data sent by the client.
-                            //while ((i = stream.Read(bytes, 0, bytes.Length)) != 0) { }
-
-                            // Buffer for reading data
+                            // 第一次接收 json 目前数据大小位14byte
                             Byte[] bytes = new Byte[14];
 
                             stream.Read(bytes, 0, bytes.Length);
 
                             // 将传来字符串转换为字符串数组,todo添加长度限制防止崩溃
-                            //data = System.Text.Encoding.ASCII.GetString(bytes, 0, i);
-
-                            //string[] firstget=(string[])EncryptionClass.BytesToObject(bytes);
-                            //
                             string[] firstget = EncryptionClass.BytesToStringArr(bytes);
 
-                            ClientType ddd;
+                            //判断客户端
+                            ClientType clientType;
                             if (GetClientType(firstget) == 1)
                             {
-                                ddd = ClientType.Csharp;
+                                clientType = ClientType.Csharp;
                             }
                             else if(GetClientType(firstget) == 2)
                             {
-                                ddd = ClientType.Android;
+                                clientType = ClientType.Android;
                             }
                             else
                             {
-                                ddd = ClientType.Csharp;
+                                clientType = ClientType.Csharp;
                             }
-
+                            //接下来信息的长度
                             int MsgLen = Convert.ToInt32(firstget[1]);
 
-                            //判断安卓还是c#客户端
-
-                            switch (ddd)
+                            //选择不同客户端逻辑
+                            switch (clientType)
                             {
                                 case ClientType.Csharp:
 
@@ -210,7 +297,7 @@ namespace PasswordManagerServer
                             }
 
 
-                            // Shutdown and end connection
+                            // 关闭socket连接
                             client.Close();
                         }
                     }
@@ -218,7 +305,6 @@ namespace PasswordManagerServer
                     {
                         Console.WriteLine("Exception: {0}", ex);
                     }
-
                 }
             }
             catch (SocketException ex)
@@ -232,8 +318,7 @@ namespace PasswordManagerServer
             }
 
 
-            Console.WriteLine("\nHit enter to continue...");
-            Console.Read();
+            Console.WriteLine("\n成功关闭服务器");
 
         }
 
@@ -263,7 +348,6 @@ namespace PasswordManagerServer
             return typechoice;
 
         }
-
 
         private byte[][] backmsglogic(string[] firstget)
         {
@@ -299,7 +383,7 @@ namespace PasswordManagerServer
                     if (userjudge(nameupload, pswload))   //密码账号正确
                     {
                         //从文件夹中读取对应数据
-                        CurUserinit(nameupload);
+                        PSWDataBaseClass.CurUserinit(nameupload);
                         //string bakpath = CurUserPath + "bak\\";
                         string sourcepath = CurUserPath + "source\\psw";
 
@@ -381,7 +465,7 @@ namespace PasswordManagerServer
                         string uploadstructpsw = firstget[5];
 
                         //从文件夹中读取对应数据
-                        CurUserinit(nameupload);
+                        PSWDataBaseClass.CurUserinit(nameupload);
                         //string bakpath = CurUserPath + "bak\\";
                         string sourcepath = CurUserPath + "source\\psw";
 
@@ -502,7 +586,7 @@ namespace PasswordManagerServer
                     if (userjudge(nameupload, pswload))   //密码账号正确
                     {
                         //从文件夹中读取对应数据
-                        CurUserinit(nameupload);
+                        PSWDataBaseClass.CurUserinit(nameupload);
                         //string bakpath = CurUserPath + "bak\\";
                         string sourcepath = CurUserPath + "source\\psw";
 
@@ -587,7 +671,7 @@ namespace PasswordManagerServer
                         string uploadstructpsw = firstget[5];
 
                         //从文件夹中读取对应数据
-                        CurUserinit(nameupload);
+                        PSWDataBaseClass.CurUserinit(nameupload);
                         //string bakpath = CurUserPath + "bak\\";
                         string sourcepath = CurUserPath + "source\\psw";
 
@@ -761,81 +845,23 @@ namespace PasswordManagerServer
 
         private void button6_Click(object sender, EventArgs e)
         {
-            CurUserinit("BNDKG");
-            bakOnLoad();
+            PSWDataBaseClass.CurUserinit("BNDKG");
+            PSWDataBaseClass.bakOnLoad();
 
-            saveandchange();
+            PSWDataBaseClass.saveandchange();
         }
 
-        private static void CurUserinit(string username)
-        {
-            //这里改多用户名逻辑
-            //string username = "BNDKG";
-
-            CurUserPath = UsersDataPath + username + "\\";
-        }
-
-
-        static List<string> bakPWDPathList = new List<string>();
-        static List<string> bakPWDNameList = new List<string>();
-
-        private static void bakOnLoad()
-        {
-            string bakpath = CurUserPath + "bak\\";
-            //获取指定文件夹的所有文件
-            string[] paths = Directory.GetFiles(bakpath);
-            foreach (var item in paths)
-            {
-                //获取文件后缀名
-                string extension = Path.GetExtension(item).ToLower();
-                if (extension == ".bak")
-                {
-
-                    string savename=Path.GetFileNameWithoutExtension(item).ToLower();
-                    bakPWDPathList.Add(item);
-                    bakPWDNameList.Add(savename);
-                }
-            }
-
-        }
 
         private void button7_Click(object sender, EventArgs e)
         {
 
         }
 
-        private void saveandchange()
-        {
-            int i = 0;
-
-            List<PassWordStruct> pswlist = new List<PassWordStruct>();
-
-            foreach (var item in bakPWDPathList)
-            {
-
-                PassWordStruct curpswstuct = (PassWordStruct)EncryptionClass.LoadPasswordPure(item);
-                curpswstuct.info= bakPWDNameList[i];
-                pswlist.Add(curpswstuct);
-
-
-                i++;
-
-            }
-
-
-            PassWordDic aaaa;
-            aaaa.Name = "";
-            aaaa.password = "";
-            aaaa.otherinfo = "";
-            aaaa.numberofpassword = pswlist.Count();
-            aaaa.MYpasswordList = pswlist;
-
-            EncryptionClass.SavePassword(aaaa, "ceshi");
-        }
 
         private void button8_Click(object sender, EventArgs e)
-        {
-            PassWordDic ddd = new PassWordDic();
+        { 
+
+
         }
 
         private void button10_Click(object sender, EventArgs e)
@@ -915,7 +941,7 @@ namespace PasswordManagerServer
 
     public class EncryptionClass
     {
-        public static object LoadPassword(string filename)            //序列化读取文件
+        public static object LoadPassword(string filename)            //序列化读取文件(从服务器)
         {
             object password = new object();
             try
@@ -932,7 +958,7 @@ namespace PasswordManagerServer
 
             return password;
         }
-        public static object LoadPasswordPure(string filename)            //序列化读取文件
+        public static object LoadPasswordPure(string filename)            //序列化读取文件(从bak)
         {
             PassWordStruct aaa = new PassWordStruct(9);
             aaa.password = _LoadPasswordPure(filename);
@@ -959,7 +985,7 @@ namespace PasswordManagerServer
             return password;
         }
 
-        public static void SavePassword(object password, string filename) //序列化保存
+        public static void SavePassword(object password, string filename)   //序列化保存(服务器版)
         {
             try
             {
@@ -967,11 +993,11 @@ namespace PasswordManagerServer
                 BinaryFormatter bf = new BinaryFormatter();
                 bf.Serialize(fs, password);
                 fs.Close();
-                MessageBox.Show("保存成功！");
+                MessageBox.Show("服务器保存成功！");
             }
             catch (Exception)
             {
-                MessageBox.Show("保存失败！！！");
+                MessageBox.Show("服务器保存失败！");
             }
         }
 
@@ -1039,4 +1065,130 @@ namespace PasswordManagerServer
 
     }
 
+
+    public class PSWDataBaseClass
+    {
+
+        static String CurUserPath;
+        static String OriPath;
+        static String UsersDataPath;
+
+        public static void CurUserinit(string username)
+        {
+            OriPath = System.AppDomain.CurrentDomain.SetupInformation.ApplicationBase;
+
+            UsersDataPath = OriPath + "UsersData\\";
+
+            //这里改多用户名逻辑
+            //string username = "BNDKG";
+
+            CurUserPath = UsersDataPath + username + "\\";
+        }
+
+
+        static List<string> bakPWDPathList = new List<string>();
+        static List<string> bakPWDNameList = new List<string>();
+
+        public static void bakOnLoad()
+        {
+            string bakpath = CurUserPath + "bak\\";
+            //获取指定文件夹的所有文件
+            string[] paths = Directory.GetFiles(bakpath);
+            foreach (var item in paths)
+            {
+                //获取文件后缀名
+                string extension = Path.GetExtension(item).ToLower();
+                if (extension == ".bak")
+                {
+
+                    string savename = Path.GetFileNameWithoutExtension(item).ToLower();
+                    bakPWDPathList.Add(item);
+                    bakPWDNameList.Add(savename);
+                }
+            }
+
+        }
+
+        public static void saveandchange()
+        {
+            string pswpath = CurUserPath + "source\\";
+
+
+
+            List<PassWordStruct> pswlist = new List<PassWordStruct>();
+            int i = 0;
+            foreach (var item in bakPWDPathList)
+            {
+
+                PassWordStruct curpswstuct = (PassWordStruct)EncryptionClass.LoadPasswordPure(item);
+                curpswstuct.info = bakPWDNameList[i];
+                pswlist.Add(curpswstuct);
+
+                i++;
+
+            }
+
+            PassWordDic aaaa;
+            aaaa.Name = "";
+            aaaa.password = "";
+            aaaa.otherinfo = "";
+            aaaa.numberofpassword = pswlist.Count();
+            aaaa.MYpasswordList = pswlist;
+
+            EncryptionClass.SavePassword(aaaa, pswpath);
+        }
+
+        private PassWordDic UserInit(String Name, String key, String otherinfo = "")
+        {
+            PassWordDic ddd = new PassWordDic();
+            ddd.Name = Name;
+            ddd.password = key;
+            ddd.otherinfo = otherinfo;
+            ddd.numberofpassword = 0;
+            ddd.MYpasswordList = new List<PassWordStruct>();
+            return ddd;
+        }
+        private int CreateUserMain()
+        {
+            //错误代码10
+            //读取用户名是否已在服务器中有存储且是否结构完整 错误代码2
+
+            //新建存储文件夹结构 (判断服务器上限 错误代码3)
+
+            //新建用户配置结构体
+
+            //保存用户配置结构体到指定路径(错误代码5)
+
+            return 1;
+        }
+
+        private int DeleteUserMain()
+        {
+            //删除整个账户
+
+            return 1;
+        }
+        private int UpdateUserMain()
+        {
+            //错误代码20
+            //判断用户名密码是否正确 错误代码2
+
+            //是否增加密码 错误代码3
+
+            //是否修改key
+
+            //是否修改已保存的密码 错误代码4
+
+            //是否删除某个密码 错误代码5
+
+            return 1;
+        }
+
+        private int SearchUserMain()
+        {
+            //暂时不用
+
+            return 1;
+        }
+    }
 }
