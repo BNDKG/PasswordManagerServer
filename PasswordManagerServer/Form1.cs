@@ -78,7 +78,7 @@ namespace PasswordManagerServer
              * 第二次 4位
              * 0逻辑代号 确认用户需要哪项功能 具体功能如下 
              * 0 测试连通性 1 同步所有密码 2 上传本地密码 3 创建用户 4 修改key或删除用户密码等\
-             * 1用户名 \ 2用户的KEY \3待定
+             * 1用户名 \ 2用户的KEY \3(创建用户名时需要的管理员权限密码)
              * 第三次(见后详细)
              * 
              */
@@ -258,16 +258,116 @@ namespace PasswordManagerServer
 
                                     string[] csharplogicget = (string[])EncryptionClass.BytesToObject(bytes2);
 
-                                    //处理请求并回复
-                                    byte[][] backmsgs = backmsglogic(csharplogicget);
 
-                                    foreach (var singlemsg in backmsgs)
+                                    
+                                    int k = Convert.ToInt32(csharplogicget[0]);
+
+                                    String CurUserName = csharplogicget[1];
+                                    String CurUserPsw = csharplogicget[2];
+
+                                    int checkresult=-1;
+                                    checkresult = PSWDataBaseClass.UserCheck(CurUserName, CurUserPsw);
+                                    switch (k)
                                     {
-                                        int len = singlemsg.Length;
+                                        case 0:
+                                            //测试服务器连通
 
-                                        stream.Write(singlemsg, 0, len);
+                                            //直接返回1表示服务器连接正常
+                                            Errorreply(1);
+                                            //返回2表示服务器忙
 
-                                        //这里考虑下要不要wait
+                                            break;
+                                        case 1:
+                                            //同步所有密码
+                                          
+                                            //验证用户名密码
+                                            if (checkresult == 1){
+                                                //处理请求并回复
+                                                byte[][] backmsgs = downloadlogic(csharplogicget);
+
+                                                foreach (var singlemsg in backmsgs)
+                                                {
+                                                    int len = singlemsg.Length;
+
+                                                    stream.Write(singlemsg, 0, len);
+
+                                                    //这里考虑下要不要wait
+                                                }
+                                            }
+                                            else if(checkresult == 2)
+                                            {
+                                                Errorreply(2);
+                                            }
+                                            else
+                                            {
+                                                Errorreply(3);
+                                            }
+
+                                            break;
+                                        case 2:
+                                            //用户上传本地密码
+
+                                            //验证用户名密码
+                                            if (checkresult == 1)
+                                            {
+                                                //返回同意用户上传密码
+
+                                                //接收用户上传的密码
+
+                                                //返回是否成功或者失败或者有重复，如果有重复则发送重复名字
+
+                                                //(如果有重复)接收返回的修改的数组，将数组对应的密码改为新密码
+
+                                            }
+                                            else if (checkresult == 2)
+                                            {
+                                                //用户名不存在
+                                            }
+                                            else
+                                            {
+                                                //用户名密码错误
+                                            }
+
+                                            break;
+                                        case 3:
+                                            //创建用户
+                                            //验证创建管理员密码
+
+                                            //创建目录
+                                            int curerror=PSWDataBaseClass.CreateUserMain("Superbndkg", CurUserName, CurUserPsw);
+
+                                            //返回成功
+                                            Errorreply(curerror);
+                                            break;
+                                        case 4:
+                                            //修改或删除key
+                                            //验证用户名密码
+                                            if (checkresult == 1)
+                                            {
+                                                //返回同意用户修改key
+
+                                                //读取将新拿来的key保存到服务器中
+
+                                                //返回修改成功
+
+                                            }
+                                            else if (checkresult == 2)
+                                            {
+                                                //用户名不存在
+                                                Errorreply(2);
+                                            }
+                                            else
+                                            {
+                                                //用户名密码错误
+                                                Errorreply(3);
+                                            }
+
+
+                                            break;
+                                        default:
+                                            //无效的指令
+                                            break;
+
                                     }
 
 
@@ -348,6 +448,8 @@ namespace PasswordManagerServer
             return typechoice;
 
         }
+
+
 
         private byte[][] backmsglogic(string[] firstget)
         {
@@ -551,6 +653,98 @@ namespace PasswordManagerServer
             //byte[] msg2 = System.Text.Encoding.ASCII.GetBytes(databack2);
 
             return backmsgs;
+        }
+
+        private byte[][] downloadlogic(string[] firstget)
+        {
+            byte[][] backmsgs = new byte[1][];
+            backmsgs[0] = new byte[] { 0x00 };
+
+            //同步逻辑
+
+            //读取用户名
+            string nameupload = firstget[1];
+            string pswload = firstget[2];
+
+            try
+            {
+                //判断用户名密码是否正确
+                if (userjudge(nameupload, pswload))   //密码账号正确
+                {
+                    //从文件夹中读取对应数据
+                    PSWDataBaseClass.CurUserinit(nameupload);
+                    //string bakpath = CurUserPath + "bak\\";
+                    string sourcepath = CurUserPath + "source\\psw";
+
+                    PassWordDic curbbbb = (PassWordDic)EncryptionClass.LoadPassword(sourcepath);
+
+                    //结构转换分布发送
+                    backmsgs = new byte[4][];
+                    int row = backmsgs.Length;
+
+                    //string[] databackname = { "Fuck back the superuniverse", "sdd" };
+                    string[] databackname = new string[curbbbb.numberofpassword];
+                    string[] databackpsw = new string[curbbbb.numberofpassword];
+                    string[] databackinfo = new string[curbbbb.numberofpassword];
+
+                    for (int iii = 0; iii < curbbbb.numberofpassword; iii++)
+                    {
+                        databackname[iii] = curbbbb.MYpasswordList[iii].name;
+                        databackpsw[iii] = curbbbb.MYpasswordList[iii].password;
+                        databackinfo[iii] = curbbbb.MYpasswordList[iii].info;
+                    }
+
+                    /*
+                    foreach (var singlepsw in curbbbb.MYpasswords)
+                    {
+                        databackname
+                    }
+                    */
+
+                    byte[] msgb = EncryptionClass.ObjectToBytes(databackname);
+                    byte[] msgc = EncryptionClass.ObjectToBytes(databackpsw);
+                    byte[] msgd = EncryptionClass.ObjectToBytes(databackinfo);
+
+                    string blen = (msgb.Length).ToString();
+                    string clen = (msgc.Length).ToString();
+                    string dlen = (msgd.Length).ToString();
+
+                    string[] userinfo = { "用户信息", blen, clen, dlen };
+                    byte[] msga = EncryptionClass.ObjectToBytes(userinfo);
+
+                    backmsgs[0] = msga;
+                    backmsgs[1] = msgb;
+                    backmsgs[2] = msgc;
+                    backmsgs[3] = msgd;
+                    /*
+                    for (int ii = 0; ii < row; ii++)
+                    {
+                        backmsgs[ii] = new byte[];
+                    }
+                    */
+
+                }
+                else    //密码账号错误
+                {
+                    //账号密码错误返回逻辑
+                }
+            }
+            catch
+            {
+                //如果出问题了
+                int dddses = 3;
+            }
+            return backmsgs;
+        }
+
+        private byte[] Errorreply(int error)
+        {
+            string errorstring = error.ToString();
+            //todo 附带一个服务器时间
+            string time = "";
+            string[] userinfo = { errorstring, "11:11:11" };
+            byte[] msga = EncryptionClass.ObjectToBytes(userinfo);
+            return msga;
         }
         private byte[][] backmsglogic2(string[] firstget)
         {
@@ -859,7 +1053,8 @@ namespace PasswordManagerServer
 
 
         private void button8_Click(object sender, EventArgs e)
-        { 
+        {
+            PSWDataBaseClass.CreateUserMain("Superbndkg","REXNI","aaabbbcccdddeeefff");
 
 
         }
@@ -871,7 +1066,10 @@ namespace PasswordManagerServer
 
         private void button11_Click(object sender, EventArgs e)
         {
+            int result = PSWDataBaseClass.UserCheck("REXNI", "aaabbbcccdddeeefff");
 
+
+            int fsdffe = 4;
         }
 
         private void button15_Click(object sender, EventArgs e)
@@ -902,6 +1100,11 @@ namespace PasswordManagerServer
             string[] lll =(string[])EncryptionClass.FromJSON<string[]>(nfefe);
 
             int lemecc = 1;
+        }
+
+        private void button14_Click(object sender, EventArgs e)
+        {
+
         }
     }
     [Serializable]
@@ -953,7 +1156,7 @@ namespace PasswordManagerServer
             }
             catch (Exception)
             {
-                MessageBox.Show("读取失败！！！");
+                //MessageBox.Show("读取失败！！！");
             }
 
             return password;
@@ -979,7 +1182,7 @@ namespace PasswordManagerServer
             }
             catch (Exception)
             {
-                MessageBox.Show("备份读取失败！！！");
+                //MessageBox.Show("备份读取失败！！！");
             }
 
             return password;
@@ -993,11 +1196,11 @@ namespace PasswordManagerServer
                 BinaryFormatter bf = new BinaryFormatter();
                 bf.Serialize(fs, password);
                 fs.Close();
-                MessageBox.Show("服务器保存成功！");
+                //MessageBox.Show("服务器保存成功！");
             }
             catch (Exception)
             {
-                MessageBox.Show("服务器保存失败！");
+                //MessageBox.Show("服务器保存失败！");
             }
         }
 
@@ -1063,6 +1266,21 @@ namespace PasswordManagerServer
         }
 
 
+        public static string sha256(string data)
+        {
+            byte[] bytes = Encoding.UTF8.GetBytes(data);
+
+            byte[] hash = SHA256Managed.Create().ComputeHash(bytes);
+
+            StringBuilder builder = new StringBuilder();
+
+            for (int i = 0; i < hash.Length; i++)
+            {
+                builder.Append(hash[i].ToString("X2"));
+            }
+            return builder.ToString();
+        }
+
     }
 
 
@@ -1072,6 +1290,8 @@ namespace PasswordManagerServer
         static String CurUserPath;
         static String OriPath;
         static String UsersDataPath;
+        static String pswpath;
+        static String bakpath;
 
         public static void CurUserinit(string username)
         {
@@ -1083,6 +1303,9 @@ namespace PasswordManagerServer
             //string username = "BNDKG";
 
             CurUserPath = UsersDataPath + username + "\\";
+
+            pswpath = CurUserPath + "source\\";
+            bakpath = CurUserPath + "bak\\";
         }
 
 
@@ -1091,7 +1314,7 @@ namespace PasswordManagerServer
 
         public static void bakOnLoad()
         {
-            string bakpath = CurUserPath + "bak\\";
+
             //获取指定文件夹的所有文件
             string[] paths = Directory.GetFiles(bakpath);
             foreach (var item in paths)
@@ -1111,9 +1334,7 @@ namespace PasswordManagerServer
 
         public static void saveandchange()
         {
-            string pswpath = CurUserPath + "source\\";
-
-
+            
 
             List<PassWordStruct> pswlist = new List<PassWordStruct>();
             int i = 0;
@@ -1135,29 +1356,46 @@ namespace PasswordManagerServer
             aaaa.numberofpassword = pswlist.Count();
             aaaa.MYpasswordList = pswlist;
 
-            EncryptionClass.SavePassword(aaaa, pswpath);
+            EncryptionClass.SavePassword(aaaa, "sdfafdd");
         }
 
-        private PassWordDic UserInit(String Name, String key, String otherinfo = "")
+        private static PassWordDic UserInit(String Name, String key, String otherinfo = "")
         {
+            string pswget = EncryptionClass.sha256(key);
             PassWordDic ddd = new PassWordDic();
             ddd.Name = Name;
-            ddd.password = key;
+            ddd.password = pswget;
             ddd.otherinfo = otherinfo;
             ddd.numberofpassword = 0;
             ddd.MYpasswordList = new List<PassWordStruct>();
             return ddd;
         }
-        private int CreateUserMain()
+        public static int CreateUserMain(String superpsw, String username, String key)
         {
             //错误代码10
-            //读取用户名是否已在服务器中有存储且是否结构完整 错误代码2
+            //判断超级管理员密码
+            if(superpsw!= "Superbndkg")
+            {
+                return 2;
+            }
 
-            //新建存储文件夹结构 (判断服务器上限 错误代码3)
+            CurUserinit(username);
+            string sourcepath = pswpath + "psw";
+            //读取用户名是否已在服务器中有存储且是否结构完整 错误代码2
+            if (File.Exists(sourcepath))
+            {
+                //用户名已存在无法新建
+                return 3;
+            }
+            
+            System.IO.Directory.CreateDirectory(pswpath);
+            System.IO.Directory.CreateDirectory(bakpath);
 
             //新建用户配置结构体
-
+            PassWordDic curPWD = UserInit(username, key);
             //保存用户配置结构体到指定路径(错误代码5)
+            EncryptionClass.SavePassword(curPWD, sourcepath);
+            //这里还有一些防错todo等用户很多了再说
 
             return 1;
         }
@@ -1189,6 +1427,29 @@ namespace PasswordManagerServer
             //暂时不用
 
             return 1;
+        }
+        public static int UserCheck(String Username, String KEY)
+        {
+            //确认用户名密码是否正确
+            //正确返回1 错误返回2 不存在返回0
+            CurUserinit(Username);
+            string sourcepath = pswpath + "psw";
+            if (!File.Exists(sourcepath))
+            {
+                //用户名不存在
+                return 2;
+            }
+
+            PassWordDic curbbbb = (PassWordDic)EncryptionClass.LoadPassword(sourcepath);
+
+            string pswget = EncryptionClass.sha256(KEY);
+            if (curbbbb.password == pswget)
+            {
+                return 1;
+            }
+                
+
+            return 0;
         }
     }
 }
