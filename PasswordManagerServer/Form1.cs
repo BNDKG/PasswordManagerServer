@@ -246,6 +246,8 @@ namespace PasswordManagerServer
                             }
                             //接下来信息的长度
                             int MsgLen = Convert.ToInt32(firstget[1]);
+                            //返回消息buffer
+                            byte[] buffer;
 
                             //选择不同客户端逻辑
                             switch (clientType)
@@ -264,6 +266,7 @@ namespace PasswordManagerServer
 
                                     String CurUserName = csharplogicget[1];
                                     String CurUserPsw = csharplogicget[2];
+                                    string cursuperadmin= csharplogicget[3];
 
                                     int checkresult=-1;
                                     checkresult = PSWDataBaseClass.UserCheck(CurUserName, CurUserPsw);
@@ -273,9 +276,9 @@ namespace PasswordManagerServer
                                             //测试服务器连通
 
                                             //直接返回1表示服务器连接正常
-                                            Errorreply(1);
+                                            buffer = Errorreply(1);
                                             //返回2表示服务器忙
-
+                                            stream.Write(buffer, 0, buffer.Length);
                                             break;
                                         case 1:
                                             //同步所有密码
@@ -312,9 +315,34 @@ namespace PasswordManagerServer
                                             {
                                                 //返回同意用户上传密码
 
+                                                //直接返回1表示同意用户上传密码
+                                                buffer = Errorreply(1);
+                                                stream.Write(buffer, 0, buffer.Length);
+
                                                 //接收用户上传的密码
+                                                Byte[] buffer2 = new Byte[256];
+                                                stream.Read(buffer2, 0, buffer2.Length);
+                                                string[] uploadfirst = (string[])EncryptionClass.BytesToObject(buffer2);
+
+                                                int lenb = Convert.ToInt32(uploadfirst[1]);
+                                                int lenc = Convert.ToInt32(uploadfirst[2]);
+                                                int lend = Convert.ToInt32(uploadfirst[3]);
+
+                                                Byte[] data2 = new Byte[lenb];
+                                                Byte[] data3 = new Byte[lenc];
+                                                Byte[] data4 = new Byte[lend];
+
+                                                stream.Read(data2, 0, data2.Length);
+                                                stream.Read(data3, 0, data3.Length);
+                                                stream.Read(data4, 0, data4.Length);
+
+                                                string[] receive2 = (string[])EncryptionClass.BytesToObject(data2);
+                                                string[] receive3 = (string[])EncryptionClass.BytesToObject(data3);
+                                                string[] receive4 = (string[])EncryptionClass.BytesToObject(data4);
 
                                                 //返回是否成功或者失败或者有重复，如果有重复则发送重复名字
+
+                                                PSWDataBaseClass.UpdateUserMain();
 
                                                 //(如果有重复)接收返回的修改的数组，将数组对应的密码改为新密码
 
@@ -322,22 +350,29 @@ namespace PasswordManagerServer
                                             else if (checkresult == 2)
                                             {
                                                 //用户名不存在
+                                                buffer = Errorreply(2);
+                                                stream.Write(buffer, 0, buffer.Length);
                                             }
                                             else
                                             {
                                                 //用户名密码错误
+                                                buffer = Errorreply(3);
+                                                stream.Write(buffer, 0, buffer.Length);
                                             }
 
                                             break;
                                         case 3:
-                                            //创建用户
-                                            //验证创建管理员密码
+                                            //创建用户逻辑
 
                                             //创建目录
-                                            int curerror=PSWDataBaseClass.CreateUserMain("Superbndkg", CurUserName, CurUserPsw);
+                                            int curerror=PSWDataBaseClass.CreateUserMain(cursuperadmin, CurUserName, CurUserPsw);
 
-                                            //返回成功
-                                            Errorreply(curerror);
+                                            //返回结果
+                                            //直接返回1表示服务器连接正常
+                                            buffer = Errorreply(curerror);
+                                            //返回2表示服务器忙
+                                            stream.Write(buffer, 0, buffer.Length);
+
                                             break;
                                         case 4:
                                             //修改或删除key
@@ -369,8 +404,6 @@ namespace PasswordManagerServer
                                             break;
 
                                     }
-
-
                                     break;
                                 case ClientType.Android:
 
@@ -448,7 +481,6 @@ namespace PasswordManagerServer
             return typechoice;
 
         }
-
 
 
         private byte[][] backmsglogic(string[] firstget)
@@ -952,14 +984,7 @@ namespace PasswordManagerServer
 
             return backmsgs;
         }
-        private void syncpassword()
-        {
 
-        }
-        private void uploadpassword()
-        {
-
-        }
         private bool userjudge(string nameupload, string pswload)
         {
             //todo这里查找所有文件夹寻找是否有此名字并从文件夹下读取对应密码，如果正确则上传对应密码
@@ -969,13 +994,10 @@ namespace PasswordManagerServer
         }
 
 
-
         private void button3_Click(object sender, EventArgs e)
         {
             structsave("test1");
         }
-
-
 
         private void button4_Click(object sender, EventArgs e)
         {
@@ -1406,7 +1428,7 @@ namespace PasswordManagerServer
 
             return 1;
         }
-        private int UpdateUserMain()
+        public static int UpdateUserMain()
         {
             //错误代码20
             //判断用户名密码是否正确 错误代码2
