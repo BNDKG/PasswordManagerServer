@@ -341,10 +341,21 @@ namespace PasswordManagerServer
                                                 string[] receive4 = (string[])EncryptionClass.BytesToObject(data4);
 
                                                 //返回是否成功或者失败或者有重复，如果有重复则发送重复名字
+                                                List<string> RepetName;                                              
+                                                //判断是否有重复
+                                                if(PSWDataBaseClass.UploadUserMain(receive2, receive3, receive4, out RepetName) != 1)
+                                                {
+                                                    //如果有重复继续
+                                                    //(如果有重复)接收返回的修改的数组，将数组对应的密码改为新密码
 
-                                                PSWDataBaseClass.UpdateUserMain();
+                                                }
 
-                                                //(如果有重复)接收返回的修改的数组，将数组对应的密码改为新密码
+                                                //返回成功
+
+                                                buffer = Errorreply(1);
+                                                stream.Write(buffer, 0, buffer.Length);
+
+
 
                                             }
                                             else if (checkresult == 2)
@@ -1426,13 +1437,6 @@ namespace PasswordManagerServer
         {
             //删除整个账户
 
-            return 1;
-        }
-        public static int UpdateUserMain()
-        {
-            //错误代码20
-            //判断用户名密码是否正确 错误代码2
-
             //是否增加密码 错误代码3
 
             //是否修改key
@@ -1440,6 +1444,46 @@ namespace PasswordManagerServer
             //是否修改已保存的密码 错误代码4
 
             //是否删除某个密码 错误代码5
+
+            return 1;
+        }
+        public static int UploadUserMain(string[] names,string[] keys, string[] infos, out List<string>repeats)
+        {
+            //错误代码20
+            repeats = new List<string>() ;
+
+            //打开本地内容
+            string sourcepath = pswpath + "psw";
+            PassWordDic curcccc = (PassWordDic)EncryptionClass.LoadPassword(sourcepath);
+            //读取本地密码到一个list中
+
+            //循环用户上传的密码如果在list中存在检查密码是否一致，不一致将此条记录到重复list中
+            int i = 0;
+            foreach (var item in names)
+            {
+
+                if (curcccc.Name.Contains(item))
+                {
+                    int index = curcccc.Name.IndexOf(item);
+
+                    int sdfsf = 9;
+                }
+                else
+                {
+                    PassWordStruct curpswstuct = (PassWordStruct)EncryptionClass.LoadPasswordPure(item);
+                    curpswstuct.name = names[i];
+                    curpswstuct.key = keys[i];
+                    curpswstuct.info = infos[i];
+
+
+                    curcccc.MYpasswordList.Add(curpswstuct);
+                }
+
+
+                i++;
+
+            }
+
 
             return 1;
         }
