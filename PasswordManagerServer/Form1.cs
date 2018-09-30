@@ -210,7 +210,8 @@ namespace PasswordManagerServer
                         {
                             //为了避免每次都被tcpListener.AcceptTcpClient()阻塞线程，添加了此判断，
                             //当没有连接请求时，什么也不做，有了请求再执行到tcpListener.AcceptTcpClient()
-                            //这里可能可以加sleep来降低服务器负载
+                            //加入延迟降低cpu功耗
+                            Thread.Sleep(100);
                         }
                         else
                         {
@@ -286,7 +287,7 @@ namespace PasswordManagerServer
                                             //验证用户名密码
                                             if (checkresult == 1){
                                                 //处理请求并回复
-                                                byte[][] backmsgs = downloadlogic(csharplogicget);
+                                                byte[][] backmsgs = PSWDataBaseClass.downloadlogic(csharplogicget);
 
                                                 foreach (var singlemsg in backmsgs)
                                                 {
@@ -698,88 +699,6 @@ namespace PasswordManagerServer
             return backmsgs;
         }
 
-        private byte[][] downloadlogic(string[] firstget)
-        {
-            byte[][] backmsgs = new byte[1][];
-            backmsgs[0] = new byte[] { 0x00 };
-
-            //同步逻辑
-
-            //读取用户名
-            string nameupload = firstget[1];
-            string pswload = firstget[2];
-
-            try
-            {
-                //判断用户名密码是否正确
-                if (userjudge(nameupload, pswload))   //密码账号正确
-                {
-                    //从文件夹中读取对应数据
-                    PSWDataBaseClass.CurUserinit(nameupload);
-                    //string bakpath = CurUserPath + "bak\\";
-                    string sourcepath = CurUserPath + "source\\psw";
-
-                    PassWordDic curbbbb = (PassWordDic)EncryptionClass.LoadPassword(sourcepath);
-
-                    //结构转换分布发送
-                    backmsgs = new byte[4][];
-                    int row = backmsgs.Length;
-
-                    //string[] databackname = { "Fuck back the superuniverse", "sdd" };
-                    string[] databackname = new string[curbbbb.numberofpassword];
-                    string[] databackpsw = new string[curbbbb.numberofpassword];
-                    string[] databackinfo = new string[curbbbb.numberofpassword];
-
-                    for (int iii = 0; iii < curbbbb.numberofpassword; iii++)
-                    {
-                        databackname[iii] = curbbbb.MYpasswordList[iii].name;
-                        databackpsw[iii] = curbbbb.MYpasswordList[iii].password;
-                        databackinfo[iii] = curbbbb.MYpasswordList[iii].info;
-                    }
-
-                    /*
-                    foreach (var singlepsw in curbbbb.MYpasswords)
-                    {
-                        databackname
-                    }
-                    */
-
-                    byte[] msgb = EncryptionClass.ObjectToBytes(databackname);
-                    byte[] msgc = EncryptionClass.ObjectToBytes(databackpsw);
-                    byte[] msgd = EncryptionClass.ObjectToBytes(databackinfo);
-
-                    string blen = (msgb.Length).ToString();
-                    string clen = (msgc.Length).ToString();
-                    string dlen = (msgd.Length).ToString();
-
-                    string[] userinfo = { "用户信息", blen, clen, dlen };
-                    byte[] msga = EncryptionClass.ObjectToBytes(userinfo);
-
-                    backmsgs[0] = msga;
-                    backmsgs[1] = msgb;
-                    backmsgs[2] = msgc;
-                    backmsgs[3] = msgd;
-                    /*
-                    for (int ii = 0; ii < row; ii++)
-                    {
-                        backmsgs[ii] = new byte[];
-                    }
-                    */
-
-                }
-                else    //密码账号错误
-                {
-                    //账号密码错误返回逻辑
-                }
-            }
-            catch
-            {
-                //如果出问题了
-                int dddses = 3;
-            }
-            return backmsgs;
-        }
-
         private byte[] Errorreply(int error)
         {
             string errorstring = error.ToString();
@@ -1038,7 +957,7 @@ namespace PasswordManagerServer
 
 
             PassWordDic aaaa;
-            aaaa.Name = "";
+            aaaa.info = "";
             aaaa.password = "";
             aaaa.otherinfo = "";
             aaaa.numberofpassword = aac.Count();
@@ -1072,7 +991,7 @@ namespace PasswordManagerServer
 
         private void button6_Click(object sender, EventArgs e)
         {
-            PSWDataBaseClass.CurUserinit("BNDKG");
+            PSWDataBaseClass.CurUserinit("BNDKG7");
             PSWDataBaseClass.bakOnLoad();
 
             PSWDataBaseClass.saveandchange();
@@ -1164,7 +1083,7 @@ namespace PasswordManagerServer
     public struct PassWordDic  
     {
         //密码字典结构
-        public string Name;
+        public string info;
         public string password;
         public string otherinfo;
         public int numberofpassword;
@@ -1341,6 +1260,89 @@ namespace PasswordManagerServer
             bakpath = CurUserPath + "bak\\";
         }
 
+        public static byte[][] downloadlogic(string[] firstget)
+        {
+            byte[][] backmsgs = new byte[1][];
+            backmsgs[0] = new byte[] { 0x00 };
+
+            //同步逻辑
+
+            //读取用户名
+            string nameupload = firstget[1];
+            string pswload = firstget[2];
+
+            try
+            {
+                //判断用户名密码是否正确
+                if (true)   //密码账号正确
+                {
+                    //从文件夹中读取对应数据
+                    CurUserinit(nameupload);
+                    //string bakpath = CurUserPath + "bak\\";
+                    string sourcepath = CurUserPath + "source\\psw";
+
+                    PassWordDic curbbbb = (PassWordDic)EncryptionClass.LoadPassword(sourcepath);
+
+                    //结构转换分布发送
+                    backmsgs = new byte[4][];
+                    int row = backmsgs.Length;
+                    int numofpsw=curbbbb.MYpasswordList.Count();
+
+                    //string[] databackname = { "Fuck back the superuniverse", "sdd" };
+                    string[] databackname = new string[numofpsw];
+                    string[] databackpsw = new string[numofpsw];
+                    string[] databackinfo = new string[numofpsw];
+
+                    for (int iii = 0; iii < numofpsw; iii++)
+                    {
+                        databackname[iii] = curbbbb.MYpasswordList[iii].name;
+                        databackpsw[iii] = curbbbb.MYpasswordList[iii].password;
+                        databackinfo[iii] = curbbbb.MYpasswordList[iii].info;
+                    }
+
+                    /*
+                    foreach (var singlepsw in curbbbb.MYpasswords)
+                    {
+                        databackname
+                    }
+                    */
+
+                    byte[] msgb = EncryptionClass.ObjectToBytes(databackname);
+                    byte[] msgc = EncryptionClass.ObjectToBytes(databackpsw);
+                    byte[] msgd = EncryptionClass.ObjectToBytes(databackinfo);
+
+                    string blen = (msgb.Length).ToString();
+                    string clen = (msgc.Length).ToString();
+                    string dlen = (msgd.Length).ToString();
+
+                    string[] userinfo = { "1", blen, clen, dlen };
+                    byte[] msga = EncryptionClass.ObjectToBytes(userinfo);
+
+                    backmsgs[0] = msga;
+                    backmsgs[1] = msgb;
+                    backmsgs[2] = msgc;
+                    backmsgs[3] = msgd;
+                    /*
+                    for (int ii = 0; ii < row; ii++)
+                    {
+                        backmsgs[ii] = new byte[];
+                    }
+                    */
+
+                }
+                else    //密码账号错误
+                {
+                    //账号密码错误返回逻辑
+                }
+            }
+            catch
+            {
+                //如果出问题了
+                int dddses = 3;
+            }
+            return backmsgs;
+        }
+
 
         static List<string> bakPWDPathList = new List<string>();
         static List<string> bakPWDNameList = new List<string>();
@@ -1383,7 +1385,7 @@ namespace PasswordManagerServer
             }
 
             PassWordDic aaaa;
-            aaaa.Name = "";
+            aaaa.info = "";
             aaaa.password = "";
             aaaa.otherinfo = "";
             aaaa.numberofpassword = pswlist.Count();
@@ -1396,7 +1398,7 @@ namespace PasswordManagerServer
         {
             string pswget = EncryptionClass.sha256(key);
             PassWordDic ddd = new PassWordDic();
-            ddd.Name = Name;
+            ddd.info = Name;
             ddd.password = pswget;
             ddd.otherinfo = otherinfo;
             ddd.numberofpassword = 0;
@@ -1459,12 +1461,17 @@ namespace PasswordManagerServer
 
             //循环用户上传的密码如果在list中存在检查密码是否一致，不一致将此条记录到重复list中
             int i = 0;
-            foreach (var item in names)
+            foreach (var item in infos)
             {
-
-                if (curcccc.Name.Contains(item))
+                if (item=="")
                 {
-                    int index = curcccc.Name.IndexOf(item);
+                    //检测路径名是否合法
+                    i++;
+                    continue;
+                }
+                if (curcccc.info.Contains(item))
+                {
+                    int index = curcccc.info.IndexOf(item);
 
                     int sdfsf = 9;
                 }
@@ -1483,7 +1490,7 @@ namespace PasswordManagerServer
                 i++;
 
             }
-
+            EncryptionClass.SavePassword(curcccc, sourcepath);
 
             return 1;
         }
