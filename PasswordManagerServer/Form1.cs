@@ -980,6 +980,8 @@ namespace PasswordManagerServer
 
             UsersDataPath = OriPath + "UsersData\\";
 
+            //初始化服务器目录结构
+
         }
 
         private void button5_Click(object sender, EventArgs e)
@@ -1449,7 +1451,7 @@ namespace PasswordManagerServer
 
             return 1;
         }
-        public static int UploadUserMain(string[] names,string[] keys, string[] infos, out List<string>repeats)
+        public static int UploadUserMain(string[] names,string[] psws, string[] infos, out List<string>repeats)
         {
             //错误代码20
             repeats = new List<string>() ;
@@ -1469,9 +1471,17 @@ namespace PasswordManagerServer
                     i++;
                     continue;
                 }
-                if (curcccc.info.Contains(item))
+                if (curcccc.MYpasswordList.Exists(o => o.info == item))
                 {
-                    int index = curcccc.info.IndexOf(item);
+                    int index = curcccc.MYpasswordList.FindIndex(o => o.info == item);
+
+                    //先做直接替换
+                    PassWordStruct curpswstuct = (PassWordStruct)EncryptionClass.LoadPasswordPure(item);
+                    curpswstuct.name = names[i];
+                    curpswstuct.password = psws[i];
+                    curpswstuct.info = infos[i];
+
+                    curcccc.MYpasswordList[index] = curpswstuct;
 
                     int sdfsf = 9;
                 }
@@ -1479,7 +1489,7 @@ namespace PasswordManagerServer
                 {
                     PassWordStruct curpswstuct = (PassWordStruct)EncryptionClass.LoadPasswordPure(item);
                     curpswstuct.name = names[i];
-                    curpswstuct.key = keys[i];
+                    curpswstuct.password = psws[i];
                     curpswstuct.info = infos[i];
 
 
