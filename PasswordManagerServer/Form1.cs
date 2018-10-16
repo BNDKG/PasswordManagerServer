@@ -260,8 +260,6 @@ namespace PasswordManagerServer
                                     stream.Read(bytes2, 0, bytes2.Length);
 
                                     string[] csharplogicget = (string[])EncryptionClass.BytesToObject(bytes2);
-
-
                                     
                                     int k = Convert.ToInt32(csharplogicget[0]);
 
@@ -424,16 +422,31 @@ namespace PasswordManagerServer
 
                                     string[] get2 = EncryptionClass.BytesToStringArr(bytes3);
 
-                                    byte[][] backmsgs2 = backmsglogic2(get2);
+                                    //判断用户名密码
+                                    int k2 = Convert.ToInt32(get2[0]);
 
-                                    foreach (var singlemsg in backmsgs2)
+                                    string CurUserName2 = get2[1];
+                                    string CurUserPsw2 = get2[2];
+                                    string cursuperadmin2 = get2[3];
+
+                                    int checkresult2 = -1;
+                                    checkresult = PSWDataBaseClass.UserCheck(CurUserName2, CurUserPsw2);
+
+                                    //安卓端只做一个同步k只等于1
+                                    if (k2 == 1)
                                     {
-                                        int len = singlemsg.Length;
+                                        byte[][] backmsgs2 = PSWDataBaseClass.downloadlogic(get2,2); ;
 
-                                        stream.Write(singlemsg, 0, len);
+                                        foreach (var singlemsg in backmsgs2)
+                                        {
+                                            int len = singlemsg.Length;
 
-                                        //这里考虑下要不要wait
+                                            stream.Write(singlemsg, 0, len);
+
+                                            //这里考虑下要不要wait
+                                        }
                                     }
+
 
 
                                     break;
@@ -494,7 +507,11 @@ namespace PasswordManagerServer
 
         }
 
-
+        /// <summary>
+        /// 待删除1016
+        /// </summary>
+        /// <param name="firstget"></param>
+        /// <returns></returns>
         private byte[][] backmsglogic(string[] firstget)
         {
 
@@ -708,6 +725,11 @@ namespace PasswordManagerServer
             byte[] msga = EncryptionClass.ObjectToBytes(userinfo);
             return msga;
         }
+        /// <summary>
+        /// 待删除1016
+        /// </summary>
+        /// <param name="firstget"></param>
+        /// <returns></returns>
         private byte[][] backmsglogic2(string[] firstget)
         {
 
@@ -914,7 +936,12 @@ namespace PasswordManagerServer
 
             return backmsgs;
         }
-
+        /// <summary>
+        /// 待删除1016
+        /// </summary>
+        /// <param name="nameupload"></param>
+        /// <param name="pswload"></param>
+        /// <returns></returns>
         private bool userjudge(string nameupload, string pswload)
         {
             //todo这里查找所有文件夹寻找是否有此名字并从文件夹下读取对应密码，如果正确则上传对应密码
@@ -926,7 +953,7 @@ namespace PasswordManagerServer
 
         private void button3_Click(object sender, EventArgs e)
         {
-            structsave("test1");
+
         }
 
         private void button4_Click(object sender, EventArgs e)
@@ -934,38 +961,7 @@ namespace PasswordManagerServer
             structload("test1");
         }
 
-        private void structsave(string structsavepath)
-        {
-            /*
-            PassWordStruct[] aaa = new PassWordStruct[3];
-            aaa[1].NO = 10;
-            aaa[1].name = "fdsfs";
-            aaa[1].password = "fsdsfesssss";
-            aaa[2].NO = 14;
-            aaa[2].name = "aaaaaa";
-            aaa[2].password = "fsdsfesssss";
-            aaa[0].NO = 17;
-            aaa[0].name = "vdvvvvs";
-            aaa[0].password = "fdddfesssss";
-            */
 
-
-            List<PassWordStruct> aac = new List<PassWordStruct>();
-            PassWordStruct add1 = new PassWordStruct(1);
-            aac.Add(add1);
-
-
-
-            PassWordDic aaaa;
-            aaaa.info = "";
-            aaaa.password = "";
-            aaaa.otherinfo = "";
-            aaaa.numberofpassword = aac.Count();
-            //aaaa.MYpasswords = aaa;
-            aaaa.MYpasswordList = aac;
-
-            EncryptionClass.SavePassword(aaaa, structsavepath);
-        }
         private void structload(string structloadpath)
         {
             //bbb = (PassWordStruct[])EncryptionClass.LoadPassword("test1");
@@ -1262,7 +1258,7 @@ namespace PasswordManagerServer
             bakpath = CurUserPath + "bak\\";
         }
 
-        public static byte[][] downloadlogic(string[] firstget)
+        public static byte[][] downloadlogic(string[] firstget,int type=1)
         {
             byte[][] backmsgs = new byte[1][];
             backmsgs[0] = new byte[] { 0x00 };
@@ -1308,22 +1304,45 @@ namespace PasswordManagerServer
                         databackname
                     }
                     */
+                    if (type == 1)
+                    {
+                        byte[] msgb = EncryptionClass.ObjectToBytes(databackname);
+                        byte[] msgc = EncryptionClass.ObjectToBytes(databackpsw);
+                        byte[] msgd = EncryptionClass.ObjectToBytes(databackinfo);
 
-                    byte[] msgb = EncryptionClass.ObjectToBytes(databackname);
-                    byte[] msgc = EncryptionClass.ObjectToBytes(databackpsw);
-                    byte[] msgd = EncryptionClass.ObjectToBytes(databackinfo);
+                        string blen = (msgb.Length).ToString();
+                        string clen = (msgc.Length).ToString();
+                        string dlen = (msgd.Length).ToString();
 
-                    string blen = (msgb.Length).ToString();
-                    string clen = (msgc.Length).ToString();
-                    string dlen = (msgd.Length).ToString();
+                        string[] userinfo = { "1", blen, clen, dlen };
+                        byte[] msga = EncryptionClass.ObjectToBytes(userinfo);
 
-                    string[] userinfo = { "1", blen, clen, dlen };
-                    byte[] msga = EncryptionClass.ObjectToBytes(userinfo);
+                        backmsgs[0] = msga;
+                        backmsgs[1] = msgb;
+                        backmsgs[2] = msgc;
+                        backmsgs[3] = msgd;
+                    }
+                    else
+                    {
+                        byte[] msgb = EncryptionClass.StringArrToBytes(databackname);
+                        byte[] msgc = EncryptionClass.StringArrToBytes(databackpsw);
+                        byte[] msgd = EncryptionClass.StringArrToBytes(databackinfo);
 
-                    backmsgs[0] = msga;
-                    backmsgs[1] = msgb;
-                    backmsgs[2] = msgc;
-                    backmsgs[3] = msgd;
+                        string blen = (msgb.Length).ToString();
+                        string clen = (msgc.Length).ToString();
+                        string dlen = (msgd.Length).ToString();
+
+                        string[] userinfo = { "1", blen, clen, dlen };
+                        byte[] msga = EncryptionClass.StringArrToBytes(userinfo);
+
+                        int d = msga.Length;
+
+                        backmsgs[0] = msga;
+                        backmsgs[1] = msgb;
+                        backmsgs[2] = msgc;
+                        backmsgs[3] = msgd;
+                    }
+
                     /*
                     for (int ii = 0; ii < row; ii++)
                     {
