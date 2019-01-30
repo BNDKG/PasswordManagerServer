@@ -430,7 +430,7 @@ namespace PasswordManagerServer
                                     string cursuperadmin2 = get2[3];
 
                                     int checkresult2 = -1;
-                                    checkresult = PSWDataBaseClass.UserCheck(CurUserName2, CurUserPsw2);
+                                    checkresult2 = PSWDataBaseClass.UserCheck(CurUserName2, CurUserPsw2);
 
                                     //安卓端只做一个同步k只等于1
                                     if (k2 == 1)
@@ -446,7 +446,12 @@ namespace PasswordManagerServer
                                             //这里考虑下要不要wait
                                         }
                                     }
-
+                                    else if(k2==0){
+                                        //直接返回1表示服务器连接正常
+                                        buffer = Errorreply(1,2);
+                                        //返回2表示服务器忙
+                                        stream.Write(buffer, 0, buffer.Length);
+                                    }
 
 
                                     break;
@@ -716,13 +721,21 @@ namespace PasswordManagerServer
             return backmsgs;
         }
 
-        private byte[] Errorreply(int error)
+        private byte[] Errorreply(int error,int type=1)
         {
             string errorstring = error.ToString();
             //todo 附带一个服务器时间
             string time = "";
             string[] userinfo = { errorstring, "11:11:11" };
-            byte[] msga = EncryptionClass.ObjectToBytes(userinfo);
+            byte[] msga;
+            if (type == 1)
+            {
+                msga = EncryptionClass.ObjectToBytes(userinfo);
+            }
+            else
+            {
+                msga = EncryptionClass.StringArrToBytes(userinfo);
+            }
             return msga;
         }
         /// <summary>
@@ -1328,9 +1341,11 @@ namespace PasswordManagerServer
                         byte[] msgc = EncryptionClass.StringArrToBytes(databackpsw);
                         byte[] msgd = EncryptionClass.StringArrToBytes(databackinfo);
 
-                        string blen = (msgb.Length).ToString();
-                        string clen = (msgc.Length).ToString();
-                        string dlen = (msgd.Length).ToString();
+
+                        string blen = String.Format("{0:D4}", msgb.Length);
+                        string clen = String.Format("{0:D4}", msgc.Length);
+                        string dlen = String.Format("{0:D4}", msgd.Length);
+
 
                         string[] userinfo = { "1", blen, clen, dlen };
                         byte[] msga = EncryptionClass.StringArrToBytes(userinfo);
